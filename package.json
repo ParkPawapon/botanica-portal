@@ -1,6 +1,6 @@
 {
   "name": "botanical-garden-web",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -34,7 +34,7 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
-    "eslint": "^10",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.3.0",
