@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch and commit names
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          allowed_types='(feat|fix|chore|ci|docs|refactor|test|security|perf|build|release)'
+          branch_name='${{ github.head_ref }}'
+
+          if [[ ! "${branch_name}" =~ ^${allowed_types}/[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "::error::Branch name must use type/name, for example ci/release-build-pipeline."
+            exit 1
+          fi
+
+          invalid_commits=0
+          while IFS= read -r subject; do
+            if [[ ! "${subject}" =~ ^${allowed_types}/[a-z0-9]+(-[a-z0-9]+)*:\ .+ ]]; then
+              echo "::error::Invalid commit subject: ${subject}"
+              invalid_commits=1
+            fi
+          done < <(git log --format=%s '${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}')
+
+          exit "${invalid_commits}"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check formatting
+        run: bun run format:check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Type check
+        run: bun run type-check
+
+      - name: Build
+        run: bun run build
