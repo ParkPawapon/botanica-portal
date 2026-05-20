@@ -25,6 +25,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch and commit names
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          allowed_types='(feat|fix|chore|ci|docs|refactor|test|security|perf|build|release)'
+          branch_name='${{ github.head_ref }}'
+
+          if [[ ! "${branch_name}" =~ ^${allowed_types}/[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+            echo "::error::Branch name must use type/name, for example ci/release-build-pipeline."
+            exit 1
+          fi
+
+          invalid_commits=0
+          while IFS= read -r subject; do
+            if [[ ! "${subject}" =~ ^${allowed_types}/[a-z0-9]+(-[a-z0-9]+)*:\ .+ ]]; then
+              echo "::error::Invalid commit subject: ${subject}"
+              invalid_commits=1
+            fi
+          done < <(git log --format=%s '${{ github.event.pull_request.base.sha }}..HEAD')
+
+          exit "${invalid_commits}"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
